@@ -1,0 +1,14 @@
+{
+  "name": "ble-web-game-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "@abandonware/noble": "^1.9.2-15"
+  }
+}
