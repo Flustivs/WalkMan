@@ -1,6 +1,5 @@
 const block = document.getElementById('block');
 const gameArea = document.getElementById('game-area');
-const scoreDisplay = document.getElementById('score');
 const coinsDisplay = document.getElementById('coinsCollected');
 
 // Create ground
@@ -19,10 +18,9 @@ const groundLevel = 0;
 // Movement
 let currentDirection = 'STOP';
 let playerVelocityX = 0;
-const maxPlayerX = window.innerWidth * 0.75; // Can't go past 75% of screen
+const maxPlayerX = window.innerWidth * 0.8; // Max X position for player in procentage of screen width
 
 // Game stats
-let score = 0;
 let coinsCollected = 0;
 let coins = [];
 let clouds = [];
@@ -113,10 +111,6 @@ function gameLoop() {
     // Scroll background when player moves right
     scrollClouds();
     scrollGroundPatterns();
-    
-    // Score increases over time
-    score += 1;
-    scoreDisplay.textContent = `Score: ${score}`;
 }
 
 function spawnCoin() {
@@ -154,9 +148,8 @@ function scrollCoins() {
             coin.element.remove();
             coins.splice(index, 1);
             coinsCollected++;
-            score += 100;
+            handleCoinAdd();
             coinsDisplay.textContent = `Coins: ${coinsCollected}`;
-            scoreDisplay.textContent = `Score: ${score}`;
         }
         
         // Remove coin if off-screen left
@@ -226,6 +219,14 @@ ws.onmessage = (event) => {
 ws.onerror = (err) => {
     console.error('WebSocket error:', err);
 };
+
+function handleCoinAdd() {
+    // Send coin collection event to backend
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send('COIN_ADDED');
+        console.log('Sent COIN_ADDED to backend');
+    }
+}
 
 function handleCommand(cmd) {
     switch(cmd) {

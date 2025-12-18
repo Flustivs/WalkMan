@@ -9,16 +9,19 @@ BLECharacteristic commandChar(COMMAND_CHAR_UUID, BLENotify, 20);
 // The auth characteristic is Write-only from central -> peripheral
 BLECharacteristic authChar(AUTH_CHAR_UUID, BLEWrite, 32);
 
+// The write data characteristic is Write-only from central -> peripheral (for feedback like coins)
+BLECharacteristic writeDataChar(WRITE_DATA_CHAR_UUID, BLEWrite, 32);
+
 // Authentication and timing state
 static bool authenticated = false;
 static bool authPending = false;
 static unsigned long authStartMillis = 0;
-static const unsigned long AUTH_TIMEOUT_MS = 2000;     // 2 seconds to authenticate
-static const unsigned long ADVERT_SUSPEND_MS = 3000;   // 3 seconds suspend on failure
+static const unsigned long AUTH_TIMEOUT_MS = 5000;     // 2 seconds to authenticate
+static const unsigned long ADVERT_SUSPEND_MS = 6000;   // 3 seconds suspend on failure
 static unsigned long suspendStartMillis = 0;
 static bool suspended = false;
 
-// Track advertising state (Renesas stack doesn't expose BLE.advertising())
+// Track advertising state
 static bool isAdvertising = false;
 
 String lastCommand = "";
@@ -58,6 +61,7 @@ void initBluetooth() {
 
   controlService.addCharacteristic(commandChar);
   controlService.addCharacteristic(authChar);
+  controlService.addCharacteristic(writeDataChar);
 
   BLE.addService(controlService);
   Serial.println("DEBUG: Service and characteristics added");
@@ -105,6 +109,24 @@ void initBluetooth() {
       suspendStartMillis = millis();
       ensureAdvertise(false);
     }
+  });
+
+  // Write data handler: receives feedback from backend (e.g., COIN_ADDED)
+  writeDataChar.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
+    const uint8_t *val = characteristic.value();
+    int len = characteristic.valueLength();
+    String incoming = "";
+    if (val && len > 0) {
+      incoming = String((const char *)val, len);
+      incoming.trim();
+    }
+
+    Serial.print("DEBUG: Data write received: '");
+    Serial.print(incoming);
+    Serial.println("'");
+    
+    // Store received data so main loop can process it
+    // This will be handled in receiveBluetoothData()
   });
 
   // Start advertising
@@ -192,4 +214,20 @@ void sendBluetoothCommand(const String &cmd) {
     Serial.print("Sent BLE command: ");
     Serial.println(cmd);
   }
+}
+
+String receiveBluetoothData() {
+  // Check for data on the write data characteristic (feedback from backend)
+  if (writeDataChar.written()) {
+    const uint8_t *val = writeDataChar.value();
+    int len = writeDataChar.valueLength();
+    if (val && len > 0) {
+      String incoming = String((const char *)val, len);
+      incoming.trim();
+      Serial.print("Received BLE feedback: '");
+      Serial.println(incoming);
+      return incoming;
+    }
+  }
+  return "";
 }

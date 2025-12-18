@@ -16,7 +16,7 @@ volatile unsigned long lastInterruptTime = 0;
 volatile bool buttonWasPressed = false;
 
 // Sensor read timing
-const int sensorReadingDelay = 500;
+const int sensorReadingDelay = 200;
 unsigned long lastSensorRead = 0;
 
 // Thresholds in cm
@@ -100,9 +100,18 @@ void loop() {
         Serial.print("Right: "); Serial.print(rightDistance); Serial.println(" cm ");
     }
 
-    // BLE polling
-    BLE.poll();
+    // Check for received data (not used currently)
+    String received = receiveBluetoothData();
+    if (received == "COIN_ADDED") {
+        gold++;
+        lcd.setCursor(7, 0);
+        lcd.print(gold);
+        Serial.println("Coin added via BLE! Gold updated.");
+    } else if (received.length() > 0) {
+        Serial.println("Received unknown BLE data: " + received);
+    }
 
+    // BLE polling
     pollBluetooth();
 }
 

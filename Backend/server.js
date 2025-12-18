@@ -15,6 +15,8 @@ const server = app.listen(3000, () => {
 // WebSocket server
 const wss = new WebSocketServer({ server });
 
+let writeDataChar = null; // Reference to BLE write characteristic
+
 wss.on("connection", (ws) => {
   console.log("WebSocket client connected");
 
@@ -22,12 +24,10 @@ wss.on("connection", (ws) => {
     const data = msg.toString();
     console.log("Received from client:", data);
 
-    // Broadcast to all connected clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1) {
-        client.send(data);
-      }
-    });
+    // If it's COIN_ADDED, send to Arduino via BLE
+    if (data === 'COIN_ADDED' && writeDataChar) {
+      sendToArduino('COIN_ADDED');
+    }
   });
 
   ws.on("close", () => {
@@ -44,7 +44,27 @@ function broadcast(message) {
   });
 }
 
-module.exports = { broadcast };
+function sendToArduino(message) {
+  if (writeDataChar) {
+    const buffer = Buffer.from(message, 'utf8');
+    writeDataChar.write(buffer, false, (err) => {
+      if (err) {
+        console.error('Error sending to Arduino:', err);
+      } else {
+        console.log('✓ Sent to Arduino:', message);
+      }
+    });
+  } else {
+    console.warn('BLE write characteristic not available');
+  }
+}
+
+function setWriteCharacteristic(characteristic) {
+  writeDataChar = characteristic;
+  console.log('BLE write characteristic set');
+}
+
+module.exports = { broadcast, sendToArduino, setWriteCharacteristic };
 
 // Start BLE listener (it will require './server' for broadcast)
 require('./bleListener');
